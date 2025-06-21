@@ -2,6 +2,9 @@ using UnityEngine;
 using UnityEngine.UI;
 using System;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
+using Cysharp.Threading.Tasks;
+using System.Collections.Generic;
 
 /// <summary>
 /// Enum representing the different phases of the cafe gameplay loop
@@ -70,6 +73,20 @@ public class GameManager : MonoBehaviour
     
     #endregion
     
+    #region Overlay Configuration
+    [Serializable]
+    public class PhaseOverlay
+    {
+        public CafePhase phase;
+        public string overlaySceneName;   // e.g. "Rush_UI"; leave blank to keep legacy panel
+        public GameObject fallbackPanel;  // optional: existing in-scene panel
+    }
+
+    [SerializeField] private List<PhaseOverlay> phaseOverlays = new();
+    private string _loadedOverlayScene;
+    
+    #endregion
+    
     #region UI References
     
     // References to phase-specific UI panels
@@ -102,8 +119,12 @@ public class GameManager : MonoBehaviour
         _instance = this;
         DontDestroyOnLoad(gameObject);
         
-        // Initialize
-        InitializePhaseUI();
+        // Ensure all fallback panels start inactive
+        foreach (var cfg in phaseOverlays)
+        {
+            if (cfg.fallbackPanel != null)
+                cfg.fallbackPanel.SetActive(false);
+        }
     }
     
     private void Start()
@@ -177,7 +198,7 @@ public class GameManager : MonoBehaviour
         
         Debug.Log($"Changing phase from {CurrentPhase} to {newPhase}");
         CurrentPhase = newPhase;
-        UpdatePhaseUI();
+        UpdatePhaseOverlayAsync().Forget();
     }
     
     /// <summary>
@@ -332,7 +353,50 @@ public class GameManager : MonoBehaviour
     }
     
     #endregion
+
+    #region Overlay Loader
     
+    private async UniTask UpdatePhaseOverlayAsync()
+    {
+        await UITransitions.FadeOutAsync();
+
+        if (!string.IsNullOrEmpty(_loadedOverlayScene))
+        {
+            await SceneManager.UnloadSceneAsync(_loadedOverlayScene);
+            _loadedOverlayScene = null;
+        }
+
+        // Deactivate all fallback panels
+        foreach (var cfg in phaseOverlays)
+        {
+            if (cfg.fallbackPanel != null)
+                cfg.fallbackPanel.SetActive(false);
+        }
+
+        PhaseOverlay currentCfg = phaseOverlays.Find(p => p.phase == CurrentPhase);
+        if (currentCfg == null)
+        {
+            Debug.LogError($"No PhaseOverlay config for {CurrentPhase}");
+        }
+        else if (!string.IsNullOrEmpty(currentCfg.overlaySceneName))
+        {
+            var op = SceneManager.LoadSceneAsync(currentCfg.overlaySceneName, LoadSceneMode.Additive);
+            op.allowSceneActivation = false;
+            while (op.progress < 0.9f) await UniTask.Yield();
+            op.allowSceneActivation = true;
+            await UniTask.Yield();
+            _loadedOverlayScene = currentCfg.overlaySceneName;
+        }
+        else if (currentCfg.fallbackPanel != null)
+        {
+            currentCfg.fallbackPanel.SetActive(true);
+        }
+
+        await UITransitions.FadeInAsync();
+    }
+
+    #endregion
+
     #region Save System
     
     /// <summary>
