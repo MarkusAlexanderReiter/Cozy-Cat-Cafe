@@ -72,7 +72,8 @@ This produces a cleaner hierarchy, lower memory usage, and makes it easy to add 
 *Last updated: 2025-06-21*
 
 
-## Purpose
+<!-- LEGACY SECTION: Deprecated pre-refactor description. TODO: Remove this section once issue #<TBD> is resolved. -->
+## Legacy Panel-Based Implementation (deprecated)
 Centralized singleton that manages the overall **café phase** gameplay loop. It drives transitions between the four defined `CafePhase` states (Morning, Rush, Siesta, EveningGlow) and ensures that the correct UI panel and systems are active for each phase.  
 By living across scene loads (`DontDestroyOnLoad`) it provides a single source of truth for the game state that other systems can query or subscribe to.
 
