@@ -1,0 +1,13 @@
+fileFormatVersion: 2
+guid: 1204487a7d9a8a34795335d3bc3f2dbf
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - prefab: {fileID: 7471524787930744288, guid: 76482f8d84a45f049819d0b151497538, type: 3}
+  - questData: {instanceID: 0}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
