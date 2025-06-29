@@ -101,6 +101,17 @@ namespace Game.Pooling
             stack.Push(go);
             activeCount--;
         }
+
+        /// <summary>
+        /// Pre-warms additional instances at runtime (e.g. during a loading screen)
+        /// to avoid the first-time instantiation hitch. It simply instantiates
+        /// <paramref name="count"/> extra objects and keeps them inactive in the pool.
+        /// </summary>
+        public void PreWarm(int count)
+        {
+            if (count <= 0) return;
+            Warm(count);
+        }
     }
 
     /*---------------------------------------------------------*/

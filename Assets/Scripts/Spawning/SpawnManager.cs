@@ -65,6 +65,7 @@ public sealed class SpawnManager : MonoBehaviour
         spawnAction = inputActions.Gameplay.Spawn;
     }
 
+    // TODO(ticket-123): Replace temporary test input key with final spawn triggers (e.g., timers, game events).
     private void OnEnable()  => spawnAction.performed += OnSpawnPerformed;
     private void OnDisable() => spawnAction.performed -= OnSpawnPerformed;
 
@@ -87,6 +88,7 @@ public sealed class SpawnManager : MonoBehaviour
     /// Throttles spawn input, dequeues the next request (or falls back to the default),
     /// validates it, and kicks off <see cref="SpawnRoutine"/>.
     /// </summary>
+    // NOTE: called by input callback — keep it lean; everything heavy happens in the coroutine.
     private void TrySpawn()
     {
         if (Time.time - lastSpawnTime < spawnCooldown) return;
@@ -102,6 +104,11 @@ public sealed class SpawnManager : MonoBehaviour
     /// Coroutine that actually performs the spawn: rents an object from the pool,
     /// positions and configures it, then notifies listeners via the event channel.
     /// </summary>
+    /// <remarks>
+    /// Pool pre-warm guideline: During level load, call
+    /// <c>pool.PreWarm(n);</c> or simply rent and immediately disable
+    /// a few instances to avoid first-use hitch.
+    /// </remarks>
     private IEnumerator SpawnRoutine(SpawnRequestSO request)
     {
         // 1. Get pool
