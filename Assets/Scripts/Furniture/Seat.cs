@@ -9,7 +9,8 @@ public class Seat : MonoBehaviour
 
     void Awake()
     {
-        manager = Object.FindFirstObjectByType<SeatManager>();
+        manager = SeatManager.Instance;
+        Debug.Assert(manager != null, "SeatManager not found");
         sr      = GetComponent<SpriteRenderer>();
     }
 

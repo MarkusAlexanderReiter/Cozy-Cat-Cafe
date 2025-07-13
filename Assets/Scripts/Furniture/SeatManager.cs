@@ -2,8 +2,24 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+[DefaultExecutionOrder(-50)]
 public class SeatManager : MonoBehaviour
 {
+    public static SeatManager Instance { get; private set; }
+
+    void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Debug.LogError("Duplicate SeatManager detected, destroying duplicate.");
+            Destroy(gameObject);
+            return;
+        }
+
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
+
     [SerializeField] Color freeColor = Color.green;
 
     [SerializeField] Color occColor  = Color.red;

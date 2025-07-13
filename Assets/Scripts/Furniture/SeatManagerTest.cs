@@ -5,7 +5,11 @@ public class SeatManagerTester : MonoBehaviour
 {
     SeatManager sm;
 
-    void Awake() => sm = Object.FindFirstObjectByType<SeatManager>();
+    void Awake()
+    {
+        sm = SeatManager.Instance;
+        Debug.Assert(sm != null, "SeatManager not found");
+    }
 
     void Update()
     {   
