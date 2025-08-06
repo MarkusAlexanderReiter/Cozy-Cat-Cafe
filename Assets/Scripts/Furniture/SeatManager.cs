@@ -51,8 +51,9 @@ public class SeatManager : MonoBehaviour
                 return s.transform;
             }
 
-        // No free seat → add to queue
-        waitQueue.Enqueue(customer);
+        // No free seat → add to queue if valid and not already queued
+        if (customer != null && !waitQueue.Contains(customer))
+            waitQueue.Enqueue(customer);
         return null;
     }
 
@@ -63,13 +64,37 @@ public class SeatManager : MonoBehaviour
 
         seat.SetOccupied(false, freeColor, occColor);
 
-        // Pop next person in queue, if any
-        if (waitQueue.Count > 0)
+        // Pop next valid person in queue, if any
+        while (waitQueue.Count > 0)
         {
             var next = waitQueue.Dequeue();
-            next.SendMessage("OnSeatAvailable", SendMessageOptions.DontRequireReceiver);
+            if (next != null) // GameObject could have been destroyed while waiting
+            {
+                next.SendMessage("OnSeatAvailable", SendMessageOptions.DontRequireReceiver);
+                break;
+            }
+            // else skip destroyed entry and continue
         }
     }
 
     public int FreeSeatCount() => seats.FindAll(s => !s.IsOccupied).Count;
+
+    /// <summary>
+    /// Removes a customer from the waiting queue (e.g. if they despawn).
+    /// </summary>
+    public void RemoveFromQueue(GameObject customer)
+    {
+        // Simple rebuild approach; queue is usually small
+        if (!waitQueue.Contains(customer)) return;
+        var temp = new Queue<GameObject>();
+        while (waitQueue.Count > 0)
+        {
+            var c = waitQueue.Dequeue();
+            if (c != customer && c != null)
+                temp.Enqueue(c);
+        }
+        // restore remaining
+        while (temp.Count > 0)
+            waitQueue.Enqueue(temp.Dequeue());
+    }
 }

@@ -9,7 +9,7 @@ EditorBuildSettings:
     path: Assets/Scenes/SampleScene.unity
     guid: 8c9cfa26abfee488c85f1582747f6a02
   - enabled: 1
-    path: Assets/Scenes/Main.unity
+    path: Assets/Scenes/Main/Main.unity
     guid: d414a62e3b288aa45b4ae775108d1715
   - enabled: 1
     path: Assets/Scenes/Overlays/Morning_UI.unity
