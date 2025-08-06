@@ -1,4 +1,5 @@
 using System.Collections;
+using UnityEngine.AI;
 using UnityEngine;
 
 /// <summary>
@@ -7,6 +8,26 @@ using UnityEngine;
 /// • If no seat is available, waits a random 10‒15 s and despawns unless a seat becomes free meanwhile.
 /// • When destroyed, frees its seat again.
 /// </summary>
+[RequireComponent(typeof(NavMeshAgent))]
+
+public class NavMeshDebug : MonoBehaviour
+{
+    void Start()
+    {
+        var agent = GetComponent<NavMeshAgent>();
+        Debug.Log($"isOnNavMesh={agent.isOnNavMesh}");
+        if (!agent.isOnNavMesh)
+        {
+            if (NavMesh.SamplePosition(transform.position, out var hit, 2f, NavMesh.AllAreas))
+                Debug.Log("Nearest polygon at " + hit.position);
+            else
+                Debug.Log("No NavMesh within 2 m of spawn.");
+        }
+    }
+}
+
+
+
 public class CustomerLifecycle : MonoBehaviour
 {
     #region Fields
@@ -14,9 +35,18 @@ public class CustomerLifecycle : MonoBehaviour
     private Coroutine _waitCoroutine;
     private Coroutine _seatRoutine;
     private Vector3 _spawnPos;
+    private NavMeshAgent _agent;
     #endregion
 
     #region Unity
+    private void Awake()
+    {
+        _agent = GetComponent<NavMeshAgent>();
+        // 2D settings
+        _agent.updateRotation = false;
+        _agent.updateUpAxis = false;
+    }
+
     private void OnEnable()
     {
         // Reset state each time object is activated from pool
@@ -24,6 +54,11 @@ public class CustomerLifecycle : MonoBehaviour
         _seatRoutine = null;
         _waitCoroutine = null;
         _spawnPos = transform.position;
+
+        // Reset agent for new run
+        _agent.enabled = true;
+        _agent.isStopped = true;
+        EnsureOnNavMesh(transform.position);
         TryClaimSeat();
     }
     private void Start()
@@ -130,10 +165,17 @@ public class CustomerLifecycle : MonoBehaviour
     /// </summary>
     private IEnumerator SeatLifecycleRoutine()
     {
-        // Wait before walking to seat (placeholder for pathfinding)
+        // Wait 3 s before moving to seat
         yield return new WaitForSeconds(3f);
         if (_assignedSeat != null)
-            transform.position = _assignedSeat.position;
+        {
+            _agent.isStopped = false;
+            _agent.SetDestination(_assignedSeat.position);
+            // wait until agent reaches seat (only while on NavMesh)
+            while (_agent.isOnNavMesh && (_agent.pathPending || _agent.remainingDistance > 0.05f))
+                yield return null;
+            _agent.isStopped = true;
+        }
 
         // Sit duration
         yield return new WaitForSeconds(10f);
@@ -150,7 +192,26 @@ public class CustomerLifecycle : MonoBehaviour
         yield return new WaitForSeconds(2f);
 
         // Despawn / return to pool
+        _agent.enabled = false;
         gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Warps the NavMeshAgent onto the NavMesh near a given position if it's currently off-mesh.
+    /// Safe-guards pooled objects whose spawn point may be slightly outside the baked area.
+    /// </summary>
+    private void EnsureOnNavMesh(Vector3 nearPos)
+    {
+        if (_agent.isOnNavMesh) return;
+        if (NavMesh.SamplePosition(nearPos, out var hit, 1f, NavMesh.AllAreas))
+        {
+            _agent.Warp(hit.position);
+        }
+        else
+        {
+            // As a fallback, disable pathfinding for this run
+            _agent.enabled = false;
+        }
     }
     #endregion
 }
