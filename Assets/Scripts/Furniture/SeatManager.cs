@@ -1,5 +1,6 @@
 // SeatManager.cs
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 [DefaultExecutionOrder(-50)]
@@ -44,12 +45,22 @@ public class SeatManager : MonoBehaviour
 
     public Transform RequestSeat(GameObject customer)
     {
+        // Gather all free seats
+        var freeSeats = new List<Seat>();
         foreach (var s in seats)
+        {
             if (!s.IsOccupied)
-            {
-                s.SetOccupied(true, freeColor, occColor);
-                return s.transform;
-            }
+                freeSeats.Add(s);
+        }
+
+        if (freeSeats.Count > 0)
+        {
+            // Pick a random free seat
+            int randomIndex = UnityEngine.Random.Range(0, freeSeats.Count);
+            var chosenSeat = freeSeats[randomIndex];
+            chosenSeat.SetOccupied(true, freeColor, occColor);
+            return chosenSeat.transform;
+        }
 
         // No free seat → add to queue if valid and not already queued
         if (customer != null && !waitQueue.Contains(customer))
