@@ -12,7 +12,6 @@ GameObject:
   - component: {fileID: 3962556903570578424}
   - component: {fileID: 2688657061310412653}
   - component: {fileID: 2055366699087276284}
-  - component: {fileID: 2958769247811288383}
   m_Layer: 0
   m_Name: Customer_Placeholder
   m_TagString: Untagged
@@ -79,8 +78,8 @@ SpriteRenderer:
   m_SortingLayerID: 170495713
   m_SortingLayer: 2
   m_SortingOrder: 0
-  m_Sprite: {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
-  m_Color: {r: 0.34276712, g: 1, b: 0.8123161, a: 1}
+  m_Sprite: {fileID: -2037309674074804172, guid: b0035506f8de7094a88ae0233b5d96cf, type: 3}
+  m_Color: {r: 0.2630433, g: 0.75858396, b: 0.8805031, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -148,25 +147,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d594698f42f2da343935713fb6ee0038, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!195 &2958769247811288383
-NavMeshAgent:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7471524787930744288}
-  m_Enabled: 1
-  m_AgentTypeID: 0
-  m_Radius: 0.5
-  m_Speed: 3.5
-  m_Acceleration: 8
-  avoidancePriority: 50
-  m_AngularSpeed: 120
-  m_StoppingDistance: 0
-  m_AutoTraverseOffMeshLink: 1
-  m_AutoBraking: 1
-  m_AutoRepath: 1
-  m_Height: 2
-  m_BaseOffset: 0
-  m_WalkableMask: 4294967295
-  m_ObstacleAvoidanceType: 4
+  spawnPointObject: {fileID: 0}

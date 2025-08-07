@@ -124,6 +124,12 @@ public sealed class SpawnManager : MonoBehaviour
         t.rotation = Quaternion.identity;
 
         ConfigureCustomer(go, request);
+        // Assign the spawn point so the customer can return correctly after leaving the seat.
+        var lifecycle = go.GetComponent<CustomerLifecycle>();
+        if (lifecycle != null)
+        {
+            lifecycle.SetSpawnPoint(spawnPoint);
+        }
         spawnedChannel.Raise(go);
         yield return null;
     }

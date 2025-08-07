@@ -1,7 +1,6 @@
 {
   "dependencies": {
     "com.cysharp.unitask": "https://github.com/Cysharp/UniTask.git?path=src/UniTask/Assets/Plugins/UniTask",
-    "com.h8man.2d.navmeshplus": "https://github.com/h8man/NavMeshPlus.git",
     "com.unity.2d.tilemap.extras": "4.3.1",
     "com.unity.ai.navigation": "2.0.8",
     "com.unity.collab-proxy": "2.8.2",

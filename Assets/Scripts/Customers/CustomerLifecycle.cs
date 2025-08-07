@@ -9,6 +9,7 @@ using UnityEngine;
 /// • When destroyed, frees its seat again.
 /// </summary>
 [RequireComponent(typeof(NavMeshAgent))]
+[RequireComponent(typeof(Rigidbody2D))]
 
 public class NavMeshDebug : MonoBehaviour
 {
@@ -34,6 +35,9 @@ public class CustomerLifecycle : MonoBehaviour
     private Transform _assignedSeat;
     private Coroutine _waitCoroutine;
     private Coroutine _seatRoutine;
+    [Tooltip("Optional; if assigned, customer will return to this transform before despawning.")]
+    [SerializeField] private GameObject spawnPointObject;
+    private Transform SpawnPointTransform => spawnPointObject != null ? spawnPointObject.transform : null;
     private Vector3 _spawnPos;
     private NavMeshAgent _agent;
     #endregion
@@ -42,6 +46,16 @@ public class CustomerLifecycle : MonoBehaviour
     private void Awake()
     {
         _agent = GetComponent<NavMeshAgent>();
+        // NavMeshPlus is often added after the prefab already exists, so ensure the agent component
+        // is present at runtime to avoid MissingComponentException.
+        if (_agent == null)
+        {
+            _agent = gameObject.AddComponent<NavMeshAgent>();
+            // Configure 2D-friendly defaults
+            _agent.angularSpeed = 0f;
+            _agent.height = 0f;
+            _agent.obstacleAvoidanceType = ObstacleAvoidanceType.NoObstacleAvoidance;
+        }
         // 2D settings
         _agent.updateRotation = false;
         _agent.updateUpAxis = false;
@@ -53,12 +67,13 @@ public class CustomerLifecycle : MonoBehaviour
         _assignedSeat = null;
         _seatRoutine = null;
         _waitCoroutine = null;
-        _spawnPos = transform.position;
-
         // Reset agent for new run
         _agent.enabled = true;
         _agent.isStopped = true;
         EnsureOnNavMesh(transform.position);
+
+        // Determine spawn position: prefer explicit spawnPoint Transform if assigned
+        _spawnPos = SpawnPointTransform != null ? SpawnPointTransform.position : transform.position;
         TryClaimSeat();
     }
     private void Start()
@@ -107,6 +122,26 @@ public class CustomerLifecycle : MonoBehaviour
         if (_assignedSeat != null) return; // Already seated
 
         TryClaimSeat();
+    }
+
+    /// <summary>
+    /// Assigns the spawn point transform for this customer. Used when the prefab is instantiated from a dynamic overlay scene.
+    /// </summary>
+    /// <param name="point">Transform that represents the spawn location.</param>
+    public void SetSpawnPoint(Transform point)
+    {
+        // Store the reference so SpawnPointTransform works
+        spawnPointObject = point != null ? point.gameObject : null;
+        // Also cache the exact spawn position (including Y) for later use
+        if (point != null)
+        {
+            _spawnPos = point.position;
+        }
+        else
+        {
+            // If no point is provided, fall back to current transform position
+            _spawnPos = transform.position;
+        }
     }
     #endregion
 
@@ -177,8 +212,9 @@ public class CustomerLifecycle : MonoBehaviour
             _agent.isStopped = true;
         }
 
-        // Sit duration
-        yield return new WaitForSeconds(10f);
+        // Sit duration (randomised)
+        float seatedTime = Random.Range(3f, 5f);
+        yield return new WaitForSeconds(seatedTime);
 
         // Leave seat
         if (_assignedSeat != null)
@@ -187,8 +223,36 @@ public class CustomerLifecycle : MonoBehaviour
             _assignedSeat = null;
         }
 
-        // Return to spawn spot
-        transform.position = _spawnPos;
+        // Pathfind back to spawn position
+        // Debug logging: record current position before returning to spawn
+        Debug.Log($"[CustomerLifecycle] Returning to spawn. Current position: {transform.position}, SpawnPos: {(SpawnPointTransform != null ? SpawnPointTransform.position : _spawnPos)}");
+        EnsureOnNavMesh(transform.position);
+        if (_agent.enabled)
+        {
+            _agent.isStopped = false;
+            _agent.SetDestination(SpawnPointTransform != null ? SpawnPointTransform.position : _spawnPos);
+                Debug.Log($"[CustomerLifecycle] SetDestination called. Target: {(SpawnPointTransform != null ? SpawnPointTransform.position : _spawnPos)}");
+            while (_agent.isOnNavMesh && (_agent.pathPending || _agent.remainingDistance > 0.05f))
+                yield return null;
+            // Snap exactly onto the spawn point. NavMeshAgent stops at remainingDistance, so warp to precise position.
+                // Directly teleport to spawn (bypass NavMesh to keep exact Y)
+                Vector3 targetPos = SpawnPointTransform != null ? SpawnPointTransform.position : _spawnPos;
+                // Stop the agent before disabling it to avoid "Stop can only be called on an active agent" error
+                _agent.isStopped = true;
+                _agent.enabled = false;
+                transform.position = targetPos;
+                Debug.Log($"[CustomerLifecycle] Teleported to spawn. New position: {transform.position}");
+        }
+        else
+        {
+            // Fallback: just teleport if agent is disabled
+                // Fallback teleport (use full spawn position)
+                Vector3 fallbackPos = SpawnPointTransform != null ? SpawnPointTransform.position : _spawnPos;
+                transform.position = fallbackPos;
+                Debug.Log($"[CustomerLifecycle] Fallback teleport to spawn. New position: {transform.position}");
+                Debug.Log($"[CustomerLifecycle] Fallback teleport to spawn. New position: {transform.position}");
+        }
+
         yield return new WaitForSeconds(2f);
 
         // Despawn / return to pool
@@ -205,13 +269,16 @@ public class CustomerLifecycle : MonoBehaviour
         if (_agent.isOnNavMesh) return;
         if (NavMesh.SamplePosition(nearPos, out var hit, 1f, NavMesh.AllAreas))
         {
+            Debug.Log($"[CustomerLifecycle] SamplePosition hit at {hit.position} for nearPos {nearPos}");
             _agent.Warp(hit.position);
         }
         else
         {
+            Debug.LogWarning($"[CustomerLifecycle] EnsureOnNavMesh failed: no NavMesh near {nearPos}");
             // As a fallback, disable pathfinding for this run
             _agent.enabled = false;
         }
     }
+
     #endregion
 }
