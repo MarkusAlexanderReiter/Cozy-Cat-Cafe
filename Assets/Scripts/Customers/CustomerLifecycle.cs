@@ -1,6 +1,8 @@
 using System.Collections;
+using System; // Added for time tracking and enums
 using UnityEngine.AI;
 using UnityEngine;
+using TMPro; // For request UI label
 
 /// <summary>
 /// Basic lifecycle logic for a customer:
@@ -29,10 +31,27 @@ public class NavMeshDebug : MonoBehaviour
 
 
 
-public class CustomerLifecycle : MonoBehaviour
+public enum CustomerRequestType
+{
+    // TODO: Expand with actual menu items
+    Drink,
+    Dish,
+    Item
+}
+
+public partial class CustomerLifecycle : MonoBehaviour
 {
     #region Fields
     private Transform _assignedSeat;
+    // ----- New Customer Goal System -----
+    private CustomerRequestType _currentRequest;
+    private float _spawnTime; // Time when customer becomes active
+    private float _lastWaitDuration; // Time spent waiting for a seat
+    private bool _isSatisfied;
+    // Visual feedback (emote bubble). Assign a prefab in the inspector.
+    [Tooltip("Prefab for happy/angry emote bubble.")]
+    [SerializeField] private GameObject emoteBubblePrefab;
+    // ----- End New System -----
     private Coroutine _waitCoroutine;
     private Coroutine _seatRoutine;
     [Tooltip("Optional; if assigned, customer will return to this transform before despawning.")]
@@ -65,12 +84,21 @@ public class CustomerLifecycle : MonoBehaviour
     {
         // Reset state each time object is activated from pool
         _assignedSeat = null;
+        // Ensure label starts hidden when the customer is (re)enabled
+        SetRequestLabelVisible(false);
+        _currentRequest = CustomerRequestType.Drink; // TODO: Randomize or assign based on level design
+        // Show the request label now that we have a request
+        SetRequestLabelVisible(true);
+        _spawnTime = Time.time;
+        _lastWaitDuration = 0f;
+        _isSatisfied = false;
         _seatRoutine = null;
         _waitCoroutine = null;
         // Reset agent for new run
         _agent.enabled = true;
         _agent.isStopped = true;
         EnsureOnNavMesh(transform.position);
+        Debug.Log($"_requestLabel is {(_requestLabel ? "assigned" : "NULL")}", this);
 
         // Determine spawn position: prefer explicit spawnPoint Transform if assigned
         _spawnPos = SpawnPointTransform != null ? SpawnPointTransform.position : transform.position;
@@ -153,6 +181,9 @@ public class CustomerLifecycle : MonoBehaviour
         if (_assignedSeat != null)
         {
             // Seat acquired – cancel any waiting and snap to seat (movement later)
+            // Record how long the customer waited for a seat
+            _lastWaitDuration = Time.time - _spawnTime;
+            // TODO: Use _lastWaitDuration to influence satisfaction later
             if (_waitCoroutine != null)
             {
                 StopCoroutine(_waitCoroutine);
@@ -173,7 +204,7 @@ public class CustomerLifecycle : MonoBehaviour
     private IEnumerator WaitAndDespawnRoutine()
     {
         // Randomised patience between 10–15 seconds
-        float waitTime = Random.Range(10f, 15f);
+        float waitTime = UnityEngine.Random.Range(10f, 15f);
         yield return new WaitForSeconds(waitTime);
 
         // Final attempt before giving up
@@ -212,8 +243,14 @@ public class CustomerLifecycle : MonoBehaviour
             _agent.isStopped = true;
         }
 
+        // Customer has reached the seat – show the request label
+        SetRequestLabelVisible(true);
+
         // Sit duration (randomised)
-        float seatedTime = Random.Range(3f, 5f);
+        float seatedTime = UnityEngine.Random.Range(3f, 5f);
+        // TODO: Here you could trigger a request fulfillment check (e.g., player delivered correct item)
+        // For now we simulate a simple satisfaction evaluation based on wait time.
+        EvaluateSatisfaction();
         yield return new WaitForSeconds(seatedTime);
 
         // Leave seat
@@ -221,6 +258,8 @@ public class CustomerLifecycle : MonoBehaviour
         {
             SeatManager.Instance.FreeSeat(_assignedSeat);
             _assignedSeat = null;
+            // Hide request label now that the customer is leaving
+            SetRequestLabelVisible(false);
         }
 
         // Pathfind back to spawn position
@@ -254,6 +293,13 @@ public class CustomerLifecycle : MonoBehaviour
         }
 
         yield return new WaitForSeconds(2f);
+        // Show visual feedback based on satisfaction
+        ShowEmote(_isSatisfied);
+        // Reset emote after a short display time
+        if (emoteBubbleInstance != null)
+        {
+            Destroy(emoteBubbleInstance, 1.5f);
+        }
 
         // Despawn / return to pool
         _agent.enabled = false;
@@ -264,6 +310,32 @@ public class CustomerLifecycle : MonoBehaviour
     /// Warps the NavMeshAgent onto the NavMesh near a given position if it's currently off-mesh.
     /// Safe-guards pooled objects whose spawn point may be slightly outside the baked area.
     /// </summary>
+    private GameObject emoteBubbleInstance;
+
+    private void EvaluateSatisfaction()
+    {
+        // Simple metric: if wait time < 5 seconds, consider satisfied.
+        // TODO: Incorporate correct item delivery check.
+        _isSatisfied = _lastWaitDuration <= 5f;
+        // Use _currentRequest to avoid unused field warning (placeholder logic)
+        var request = _currentRequest; // currently unused, will affect future logic
+    }
+    
+
+    private void ShowEmote(bool happy)
+    {
+        if (emoteBubblePrefab == null) return;
+        // Instantiate bubble above the customer
+        emoteBubbleInstance = Instantiate(emoteBubblePrefab, transform.position + Vector3.up * 1.5f, Quaternion.identity, transform);
+        // TODO: Set bubble sprite or animation based on 'happy' flag.
+        // Example placeholder: change color
+        var renderer = emoteBubbleInstance.GetComponent<SpriteRenderer>();
+        if (renderer != null)
+        {
+            renderer.color = happy ? Color.green : Color.red;
+        }
+    }
+
     private void EnsureOnNavMesh(Vector3 nearPos)
     {
         if (_agent.isOnNavMesh) return;
